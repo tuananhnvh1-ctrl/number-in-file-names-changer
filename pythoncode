@@ -1,0 +1,132 @@
+import os
+import re
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+# --- Main Application Class ---
+class FileRenamerApp:
+    def __init__(self, root):
+        """Initializes the application's graphical interface."""
+        self.root = root
+        self.root.title("File Renamer")
+        self.root.geometry("450x280") # Adjusted window size
+        
+        # This list will store the full paths of the files to be renamed.
+        self.selected_files = []
+
+        # --- Configure the UI Elements ---
+        main_frame = tk.Frame(root, padx=15, pady=15)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # 1. New Name Input
+        name_label = tk.Label(main_frame, text="Enter New Base Name:")
+        name_label.pack(pady=(0, 5), anchor='w')
+
+        self.new_name_entry = tk.Entry(main_frame, width=50)
+        self.new_name_entry.pack(fill=tk.X, pady=(0, 10))
+        self.new_name_entry.focus()
+
+        # 2. UPDATED: Number Modifier Input Box
+        modifier_label = tk.Label(main_frame, text="Enter Number Modifier (e.g., 5 to add, -2 to subtract):")
+        modifier_label.pack(anchor='w', pady=(10, 5))
+        
+        self.modifier_entry = tk.Entry(main_frame, width=50)
+        self.modifier_entry.pack(fill=tk.X, pady=(0, 15))
+        # Set default value to 0, which means "keep the number the same"
+        self.modifier_entry.insert(0, "0")
+
+        # 3. Action Buttons
+        button_frame = tk.Frame(main_frame)
+        button_frame.pack(fill=tk.X)
+
+        select_button = tk.Button(button_frame, text="1. Select Files", command=self.select_files)
+        select_button.pack(side=tk.LEFT, expand=True, padx=(0, 5))
+
+        rename_button = tk.Button(button_frame, text="2. Rename Selected Files", command=self.rename_files, font=('Helvetica', 10, 'bold'))
+        rename_button.pack(side=tk.RIGHT, expand=True, padx=(5, 0))
+
+        # 4. Status Bar
+        self.status_label = tk.Label(main_frame, text="Ready. Select files to begin.", bd=1, relief=tk.SUNKEN, anchor='w', padx=5, pady=5)
+        self.status_label.pack(side=tk.BOTTOM, fill=tk.X, pady=(15, 0))
+
+    def select_files(self):
+        """Opens a dialog to select files and updates the status."""
+        files = filedialog.askopenfilenames(
+            title="Select Files to Rename",
+            filetypes=(("All files", "*.*"),)
+        )
+        if files:
+            self.selected_files = list(files)
+            self.status_label.config(text=f"{len(self.selected_files)} files selected.")
+        else:
+            self.status_label.config(text="No files selected.")
+
+    def rename_files(self):
+        """Performs the main renaming logic based on user input."""
+        new_base_name = self.new_name_entry.get().strip()
+        modifier_str = self.modifier_entry.get().strip()
+
+        # --- Input Validation ---
+        if not new_base_name:
+            messagebox.showerror("Error", "Please enter a new name before renaming.")
+            return
+
+        if not self.selected_files:
+            messagebox.showerror("Error", "Please select files before renaming.")
+            return
+
+        # Validate and convert the modifier input
+        try:
+            # If the box is empty, treat it as 0. Otherwise, convert to integer.
+            modifier_value = int(modifier_str) if modifier_str else 0
+        except ValueError:
+            messagebox.showerror("Invalid Input", "The number modifier must be a valid integer (e.g., 5, -2, 0).")
+            return
+
+        # --- Renaming Process ---
+        pattern = re.compile(r"^(.*?)\s+(\d+)(\..+)$")
+        renamed_count = 0
+        skipped_files = []
+
+        for old_path in self.selected_files:
+            try:
+                directory, old_filename = os.path.split(old_path)
+                match = pattern.match(old_filename)
+
+                if match:
+                    number_str = match.group(2)
+                    extension = match.group(3)
+                    
+                    # UPDATED: Calculate the new number using the modifier value
+                    current_number = int(number_str)
+                    new_number = current_number + modifier_value
+                    
+                    new_filename = f"{new_base_name} {new_number}{extension}"
+                    new_path = os.path.join(directory, new_filename)
+                    
+                    os.rename(old_path, new_path)
+                    renamed_count += 1
+                else:
+                    skipped_files.append(old_filename)
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred:\n{e}")
+                return
+
+        # --- Final Report ---
+        success_message = f"Successfully renamed {renamed_count} files."
+        if skipped_files:
+            skipped_message = "\nThe following files were skipped (unrecognized name format):\n" + "\n".join(skipped_files)
+            messagebox.showwarning("Process Complete with Warnings", success_message + skipped_message)
+        else:
+            messagebox.showinfo("Success", success_message)
+        
+        self.selected_files = []
+        self.status_label.config(text="Ready. Select new files to begin.")
+
+
+# --- Run the Application ---
+if __name__ == "__main__":
+    root_window = tk.Tk()
+    app = FileRenamerApp(root_window)
+    root_window.mainloop()
+
