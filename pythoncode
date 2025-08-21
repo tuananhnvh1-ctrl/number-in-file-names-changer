@@ -84,7 +84,8 @@ class FileRenamerApp:
             return
 
         # --- Renaming Process ---
-        pattern = re.compile(r"^(.*?)\s+(\d+)(\..+)$")
+        # MODIFIED: Updated regex pattern to make the initial name/space optional.
+        pattern = re.compile(r"^(?:.*?\s+)?(\d+)(\..+)$")
         renamed_count = 0
         skipped_files = []
 
@@ -94,8 +95,9 @@ class FileRenamerApp:
                 match = pattern.match(old_filename)
 
                 if match:
-                    number_str = match.group(2)
-                    extension = match.group(3)
+                    # MODIFIED: Group indices changed because the first group is no longer captured.
+                    number_str = match.group(1) 
+                    extension = match.group(2)
                     
                     # UPDATED: Calculate the new number using the modifier value
                     current_number = int(number_str)
@@ -129,4 +131,3 @@ if __name__ == "__main__":
     root_window = tk.Tk()
     app = FileRenamerApp(root_window)
     root_window.mainloop()
-
